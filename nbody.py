@@ -1,5 +1,6 @@
 """
     N-body simulation.
+    Runtime: 114.92041752999648
 """
 
 PI = 3.14159265358979323
@@ -139,5 +140,6 @@ def nbody(loops, reference, iterations):
         print(report_energy())
 
 if __name__ == '__main__':
-    nbody(100, 'sun', 20000)
+    import timeit
+    print(timeit.timeit(lambda: nbody(100, 'sun', 20000), number=1))
 
