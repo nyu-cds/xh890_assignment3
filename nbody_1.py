@@ -50,7 +50,7 @@ def nbody(loops, reference, iterations):
         reference - body at center of system
         iterations - number of timesteps to advance
     '''
-    dt = 0.001
+    dt = 0.01
     
     
     # unpack offset_momentum function
