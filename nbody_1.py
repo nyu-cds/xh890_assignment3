@@ -1,21 +1,14 @@
 """
     N-body simulation.
     Optimize by reducing loop overhead
-    Runtime: 36.4129548080964
+    Runtime: 49.7723844749853
 """
-def nbody(loops, reference, iterations):
-    '''
-        nbody simulation
-        loops - number of loops to run
-        reference - body at center of system
-        iterations - number of timesteps to advance
-    '''
-    # change global variables into local variables
-    PI = 3.14159265358979323
-    SOLAR_MASS = 4 * PI * PI
-    DAYS_PER_YEAR = 365.24
 
-    BODIES = {
+PI = 3.14159265358979323
+SOLAR_MASS = 4 * PI * PI
+DAYS_PER_YEAR = 365.24
+
+BODIES = {
     'sun': ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], SOLAR_MASS),
 
     'jupiter': ([4.84143144246472090e+00,
@@ -49,6 +42,16 @@ def nbody(loops, reference, iterations):
                  1.62824170038242295e-03 * DAYS_PER_YEAR,
                  -9.51592254519715870e-05 * DAYS_PER_YEAR],
                 5.15138902046611451e-05 * SOLAR_MASS)}
+
+def nbody(loops, reference, iterations):
+    '''
+        nbody simulation
+        loops - number of loops to run
+        reference - body at center of system
+        iterations - number of timesteps to advance
+    '''
+    dt = 0.001
+    
     
     # unpack offset_momentum function
     (px, py, pz) = (0.0, 0.0, 0.0)
@@ -63,63 +66,60 @@ def nbody(loops, reference, iterations):
     v[1] = py / m
     v[2] = pz / m
 
-    # set up body pairs
-    body_pairs = []
-    seenit = set()
-
-    for body1 in BODIES.keys():
-        for body2 in BODIES.keys():
-            if not (body2 in seenit) and (body1 != body2):
-                body_pairs.append((body1, body2))
-                seenit.add(body1)
-
-    for i in range(loops * iterations):
-
+    for _ in range(loops):
         # unpack advance function
-        dt=0.01
+        for _ in range(iterations):
 
-        for (body1, body2) in body_pairs:
-            ([x1, y1, z1], v1, m1) = BODIES[body1]
-            ([x2, y2, z2], v2, m2) = BODIES[body2]
+            seenit=[]
+            for body1 in BODIES.keys():
+                for body2 in BODIES.keys():
+                    if not (body2 in seenit) and (body1 != body2):
+                        ([x1, y1, z1], v1, m1) = BODIES[body1]
+                        ([x2, y2, z2], v2, m2) = BODIES[body2]
+                
+	                 # unpack compute_deltas function
+                        (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
 
-	     # unpack compute_deltas function
-            (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
+	                 # unpack update_vs/compute_b(m2, dt, dx, dy, dz) function
+                        mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
+                        v1[0] -= dx * m2 * mag 
+                        v1[1] -= dy * m2 * mag
+                        v1[2] -= dz * m2 * mag
+                        v2[0] += dx * m1 * mag
+                        v2[1] += dy * m1 * mag
+                        v2[2] += dz * m1 * mag
 
-	     #u npack update_vs/compute_b(m2, dt, dx, dy, dz) function
-            mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
-            v1[0] -= dx * m2 * mag 
-            v1[1] -= dy * m2 * mag
-            v1[2] -= dz * m2 * mag
-            v2[0] += dx * m1 * mag
-            v2[1] += dy * m1 * mag
-            v2[2] += dz * m1 * mag
-
-        for body in BODIES.keys():
-            (r, [vx, vy, vz], m) = BODIES[body]
-
-            # unpack update_rs(r, dt, vx, vy, vz) function
-            r[0] += dt * vx
-            r[1] += dt * vy
-            r[2] += dt * vz
-		
-        if i != 0 and i % iterations == 0:
-            report_energy = 0.0
-
-            for (body1, body2) in body_pairs:
-                ((x1, y1, z1), v1, m1) = BODIES[body1]
-                ((x2, y2, z2), v2, m2) = BODIES[body2]
-
-	         # unpack compute_deltas function
-                (dx, dy, dz) = (x1 - x2, y1 - y2, z1 - z2)
-
-	         # unpack report_energy function
-                report_energy -= (m1 * m2) / ((dx ** 2 + dy ** 2 + dz ** 2) ** 0.5)
+                        seenit.append(body1)
 
             for body in BODIES.keys():
                 (r, [vx, vy, vz], m) = BODIES[body]
-                report_energy += m * (vx * vx + vy * vy + vz * vz) / 2.
+
+                # unpack update_rs(r, dt, vx, vy, vz) function
+                r[0] += dt * vx
+                r[1] += dt * vy
+                r[2] += dt * vz
+		
+        # unpack report_energy function
+        e = 0.0
+        seenit = []
+        for body1 in BODIES.keys():
+            for body2 in BODIES.keys():
+                if not (body2 in seenit) and (body1 != body2):
+                    ((x1, y1, z1), v1, m1) = BODIES[body1]
+                    ((x2, y2, z2), v2, m2) = BODIES[body2]
+
+	             # unpack compute_deltas function
+                    (dx, dy, dz) = (x1 - x2, y1 - y2, z1 - z2)
+
+	             # unpack report_energy function
+                    e -= (m1 * m2) / ((dx ** 2 + dy ** 2 + dz ** 2) ** 0.5)
+                    seenit.append(body1)
+
+        for body in BODIES.keys():
+            (r, [vx, vy, vz], m) = BODIES[body]
+            e += m * (vx * vx + vy * vy + vz * vz) / 2.
         
-            print(report_energy)
+        print(e)
 
 if __name__ == '__main__':
     import timeit
