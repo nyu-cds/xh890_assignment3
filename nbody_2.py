@@ -1,7 +1,7 @@
-## Change membership testing
-
 """
     N-body simulation.
+    Optimize using alternative membership testing
+    Runtime: 121.82339431298897
 """
 
 PI = 3.14159265358979323
@@ -141,5 +141,5 @@ def nbody(loops, reference, iterations):
         print(report_energy())
 
 if __name__ == '__main__':
-    nbody(100, 'sun', 20000)
-
+    import timeit
+    print(timeit.timeit(lambda:nbody(100, 'sun', 20000), number=1))
