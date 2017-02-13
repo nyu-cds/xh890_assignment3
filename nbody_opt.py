@@ -1,8 +1,8 @@
 """
     N-body simulation.
     Entire optimization
-    Runtime: 35.95408758393023
-    Speedup = 118.08728148206137 / 35.95408758393023 = 3.307563215
+    Runtime: 33.638261215994135
+    Speedup = 118.08728148206137 / 33.638261215994135 = 3.510504919
 """
 def nbody(loops, reference, iterations):
     '''
@@ -52,12 +52,10 @@ def nbody(loops, reference, iterations):
                 5.15138902046611451e-05 * SOLAR_MASS)}
     
     # unpack offset_momentum function
-    (px, py, pz) = (0.0, 0.0, 0.0)
+    [px, py, pz] = [0.0, 0.0, 0.0]
     for body, content in BODIES.items():
-        (r, [vx, vy, vz], m) = content
-        px -= vx * m
-        py -= vy * m
-        pz -= vz * m
+        (r, [vx, vy, vz], m_) = content
+        [px, py, pz] = list(map(lambda x,y: y-x*m_, [vx,vy,vz],[px,py,pz]))
         
     (r, v, m) = BODIES[reference]
     v[0] = px / m
@@ -66,13 +64,11 @@ def nbody(loops, reference, iterations):
 
     # set up body pairs
     body_pairs = []
-    seenit = set()
+    body_index = ['sun','jupiter','saturn','uranus','neptune']    
+    for i in range(5):
+        for j in range(i+1,5):
+            body_pairs.append((body_index[i], body_index[j]))
 
-    for body1 in BODIES.keys():
-        for body2 in BODIES.keys():
-            if not (body2 in seenit) and (body1 != body2):
-                body_pairs.append((body1, body2))
-                seenit.add(body1)
 
     for i in range(loops * iterations):
 
