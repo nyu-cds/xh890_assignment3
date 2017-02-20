@@ -4,19 +4,12 @@
     Runtime: 33.638261215994135
     Speedup = 118.08728148206137 / 33.638261215994135 = 3.510504919
 """
-def nbody(loops, reference, iterations):
-    '''
-        nbody simulation
-        loops - number of loops to run
-        reference - body at center of system
-        iterations - number of timesteps to advance
-    '''
-    # change global variables into local variables
-    PI = 3.14159265358979323
-    SOLAR_MASS = 4 * PI * PI
-    DAYS_PER_YEAR = 365.24
 
-    BODIES = {
+PI = 3.14159265358979323
+SOLAR_MASS = 4 * PI * PI
+DAYS_PER_YEAR = 365.24
+
+BODIES = {
     'sun': ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], SOLAR_MASS),
 
     'jupiter': ([4.84143144246472090e+00,
@@ -50,30 +43,15 @@ def nbody(loops, reference, iterations):
                  1.62824170038242295e-03 * DAYS_PER_YEAR,
                  -9.51592254519715870e-05 * DAYS_PER_YEAR],
                 5.15138902046611451e-05 * SOLAR_MASS)}
-    
-    # unpack offset_momentum function
-    [px, py, pz] = [0.0, 0.0, 0.0]
-    for body, content in BODIES.items():
-        (r, [vx, vy, vz], m_) = content
-        [px, py, pz] = list(map(lambda x,y: y-x*m_, [vx,vy,vz],[px,py,pz]))
-        
-    (r, v, m) = BODIES[reference]
-    v[0] = px / m
-    v[1] = py / m
-    v[2] = pz / m
 
-    # set up body pairs
-    from itertools import combinations
-    body_pairs=list(combinations(BODIES.keys(),2))
+from itertools import combinations
+body_pairs=list(combinations(BODIES.keys(),2))
 
-    for i in range(loops * iterations):
-
-        # unpack advance function
-        dt=0.01
-
+def advance(dt, iterations, bodies=BODIES):
+    for i in range(iterations):
         for (body1, body2) in body_pairs:
-            ([x1, y1, z1], v1, m1) = BODIES[body1]
-            ([x2, y2, z2], v2, m2) = BODIES[body2]
+            ([x1, y1, z1], v1, m1) = bodies[body1]
+            ([x2, y2, z2], v2, m2) = bodies[body2]
 
 	     # unpack compute_deltas function
             (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
@@ -89,34 +67,53 @@ def nbody(loops, reference, iterations):
             v2[1] += dy * m1r
             v2[2] += dz * m1r
 
-        for body, content in BODIES.items():
+        for content in bodies.values():
             (r, [vx, vy, vz], m) = content
 
             # unpack update_rs(r, dt, vx, vy, vz) function
             r[0] += dt * vx
             r[1] += dt * vy
             r[2] += dt * vz
-		
-        if i != 0 and i % iterations == 0:
-            report_energy = 0.0
 
-            for (body1, body2) in body_pairs:
-                ((x1, y1, z1), v1, m1) = BODIES[body1]
-                ((x2, y2, z2), v2, m2) = BODIES[body2]
+def report_energy(e=0.0, bodies=BODIES, pairs=body_pairs):
+    for (body1, body2) in pairs:
+        ([x1, y1, z1], v1, m1) = bodies[body1]
+        ([x2, y2, z2], v2, m2) = bodies[body2]
 
-	         # unpack compute_deltas function
-                (dx, dy, dz) = (x1 - x2, y1 - y2, z1 - z2)
+	# unpack compute_deltas function
+        (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
+        # unpack report_energy function
+        e -= (m1 * m2) / ((dx ** 2 + dy ** 2 + dz ** 2) ** 0.5)
 
-	         # unpack report_energy function
-                report_energy -= (m1 * m2) / ((dx ** 2 + dy ** 2 + dz ** 2) ** 0.5)
-
-            for body, content in BODIES.items():
-                (r, [vx, vy, vz], m) = content
-                report_energy += m * (vx * vx + vy * vy + vz * vz) / 2.
+    for content in bodies.values():
+        (r, [vx, vy, vz], m) = content
+        e += m * (vx * vx + vy * vy + vz * vz) / 2.
         
-            print(report_energy)
+    return e
+
+def nbody(loops, reference, iterations, bodies=BODIES):
+    '''
+        nbody simulation
+        loops - number of loops to run
+        reference - body at center of system
+        iterations - number of timesteps to advance
+    '''    
+    # unpack offset_momentum function
+    [px, py, pz] = [0.0, 0.0, 0.0]
+    for content in bodies.values():
+        (r, [vx, vy, vz], m_) = content
+        [px, py, pz] = list(map(lambda x,y: y-x*m_, [vx,vy,vz],[px,py,pz]))
+        
+    (r, v, m) = bodies[reference]
+    v[0] = px / m
+    v[1] = py / m
+    v[2] = pz / m
+    
+
+    for _ in range(loops):
+        advance(0.01,iterations)
+        print(report_energy())
 
 if __name__ == '__main__':
     import timeit
     print(timeit.timeit(lambda:nbody(100, 'sun', 20000), number=1))
-
