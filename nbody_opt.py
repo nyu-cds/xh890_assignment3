@@ -63,12 +63,8 @@ def nbody(loops, reference, iterations):
     v[2] = pz / m
 
     # set up body pairs
-    body_pairs = []
-    body_index = ['sun','jupiter','saturn','uranus','neptune']    
-    for i in range(5):
-        for j in range(i+1,5):
-            body_pairs.append((body_index[i], body_index[j]))
-
+    from itertools import combinations
+    body_pairs=list(combinations(BODIES.keys(),2))
 
     for i in range(loops * iterations):
 
