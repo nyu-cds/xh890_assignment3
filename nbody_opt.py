@@ -80,12 +80,14 @@ def nbody(loops, reference, iterations):
 
 	     # unpack update_vs/compute_b(m2, dt, dx, dy, dz) function
             mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
-            v1[0] -= dx * m2 * mag 
-            v1[1] -= dy * m2 * mag
-            v1[2] -= dz * m2 * mag
-            v2[0] += dx * m1 * mag
-            v2[1] += dy * m1 * mag
-            v2[2] += dz * m1 * mag
+            m2r = m2 * mag
+            m1r = m1 * mag
+            v1[0] -= dx * m2r
+            v1[1] -= dy * m2r
+            v1[2] -= dz * m2r
+            v2[0] += dx * m1r
+            v2[1] += dy * m1r
+            v2[2] += dz * m1r
 
         for body, content in BODIES.items():
             (r, [vx, vy, vz], m) = content
