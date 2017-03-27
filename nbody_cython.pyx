@@ -1,14 +1,14 @@
-"""
-    N-body simulation.
+'''
+    N-body simulation
     Cython optimization
-    Former Runtime: 33.638261215994135s
-    Current Runtime: 7.223672965642395s
-    Speedup = 33.638261215994135 / 7.223672965642395 = 4.656670004
-"""
+    Former Runtime: 33.638261215994135
+    Current Runtime: 7.85010504723
+    Speedup = 4.285071475
+'''
 
-cdef double PI = 3.14159265358979323
-cdef double SOLAR_MASS = 4 * PI * PI
-cdef double DAYS_PER_YEAR = 365.24
+cdef float PI= 3.14159265358979323 
+cdef float SOLAR_MASS = 4 * PI * PI 
+cdef float DAYS_PER_YEAR = 365.24
 
 cdef dict BODIES = {
     'sun': ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], SOLAR_MASS),
@@ -45,25 +45,26 @@ cdef dict BODIES = {
                  -9.51592254519715870e-05 * DAYS_PER_YEAR],
                 5.15138902046611451e-05 * SOLAR_MASS)}
 
+cimport cython
 from itertools import combinations
+cdef list body_pairs=list(combinations(BODIES.keys(),2))
 
-cdef list pairs = list(combinations(BODIES.keys(),2))
-
-cpdef void advance(double dt, int iterations, dict bodies=BODIES):
-    cdef double x1,y1,z1,x2,y2,z2,m1,m2,dx,dy,dz,mag,m1r,m2r,m
+@cython.boundscheck(False)
+cdef void advance(float dt, int iterations, dict bodies=BODIES, list pairs=body_pairs):
+    cdef float mag,m2r,m1r,x1,y1,z1,x2,y2,z2,vx,vy,vz,dx,dy,dz,m
+    cdef list r,v1,v2
+    cdef str body1, body2
     
-    for _ in range(iterations):
-        for (body1, body2) in pairs:
+    for i in range(iterations):
+        for (body1, body2) in body_pairs:
             ([x1, y1, z1], v1, m1) = bodies[body1]
             ([x2, y2, z2], v2, m2) = bodies[body2]
-
-	     # unpack compute_deltas function
+            # unpack compute_deltas function
             (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
-
-	     # unpack update_vs/compute_b(m2, dt, dx, dy, dz) function
-            mag = dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
+            # unpack update_vs/compute_b(m2, dt, dx, dy, dz) function
+            mag=dt * ((dx * dx + dy * dy + dz * dz) ** (-1.5))
             m2r = m2 * mag
-            m1r = m1 * mag
+            m1r= m1 * mag
             v1[0] -= dx * m2r
             v1[1] -= dy * m2r
             v1[2] -= dz * m2r
@@ -73,19 +74,19 @@ cpdef void advance(double dt, int iterations, dict bodies=BODIES):
 
         for content in bodies.values():
             (r, [vx, vy, vz], m) = content
-
             # unpack update_rs(r, dt, vx, vy, vz) function
             r[0] += dt * vx
             r[1] += dt * vy
             r[2] += dt * vz
-
-cpdef double report_energy(double e=0.0, dict bodies=BODIES):
-    cdef double x1,y1,z1,x2,y2,z2,m1,m2,dx,dy,dz,m,vx,vy,vz
-    for (body1, body2) in combinations(bodies,2):
+            
+@cython.boundscheck(False)
+cdef float report_energy(float e=0.0, dict bodies=BODIES, list pairs=body_pairs):
+    cdef float x1,y1,z1,x2,y2,z2,m1,m2,vx,vy,vz,dx,dy,dz
+    cdef list v1,v2,r
+    for (body1, body2) in pairs:
         ([x1, y1, z1], v1, m1) = bodies[body1]
         ([x2, y2, z2], v2, m2) = bodies[body2]
-
-	# unpack compute_deltas function
+        # unpack compute_deltas function
         (dx, dy, dz) = (x1-x2, y1-y2, z1-z2)
         # unpack report_energy function
         e -= (m1 * m2) / ((dx ** 2 + dy ** 2 + dz ** 2) ** 0.5)
@@ -96,30 +97,22 @@ cpdef double report_energy(double e=0.0, dict bodies=BODIES):
         
     return e
 
-cpdef float nbody(int loops, str reference, int iterations, dict bodies=BODIES):
-    '''
-        nbody simulation
-        loops - number of loops to run
-        reference - body at center of system
-        iterations - number of timesteps to advance
-    '''    
-    cdef double px,py,pz,vx,vy,vz,m_,m
-    cdef list r,v
+@cython.boundscheck(False)
+cpdef nbody(int loops, str reference, int iterations, dict bodies=BODIES):
     # unpack offset_momentum function
-    [px, py, pz] = [0.0, 0.0, 0.0]
+    cdef float px=0.0,py=0.0,pz=0.0,vx,vy,vz,m_,m
+    cdef list v,r
     for content in bodies.values():
         (r, [vx, vy, vz], m_) = content
-        [px, py, pz] = list(map(lambda x,y: y-x*m_, [vx,vy,vz],[px,py,pz]))
+        px -= vx * m_
+        py -= vy * m_
+        pz -= vz * m_
         
     (r, v, m) = bodies[reference]
     v[0] = px / m
     v[1] = py / m
     v[2] = pz / m
- 
+    
     for _ in range(loops):
         advance(0.01,iterations)
         print(report_energy())
-
-if __name__ == '__main__':
-    import timeit
-    print(timeit.timeit(lambda:nbody(100, 'sun', 20000), number=1))
