@@ -1,15 +1,16 @@
 """
     N-body simulation.
-    Entire optimization
-    Runtime: 33.638261215994135
-    Speedup = 118.08728148206137 / 33.638261215994135 = 3.510504919
+    Cython optimization
+    Former Runtime: 33.638261215994135s
+    Current Runtime: 7.223672965642395s
+    Speedup = 33.638261215994135 / 7.223672965642395 = 4.656670004
 """
 
 cdef double PI = 3.14159265358979323
 cdef double SOLAR_MASS = 4 * PI * PI
 cdef double DAYS_PER_YEAR = 365.24
 
-BODIES = {
+cdef dict BODIES = {
     'sun': ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], SOLAR_MASS),
 
     'jupiter': ([4.84143144246472090e+00,
@@ -45,11 +46,14 @@ BODIES = {
                 5.15138902046611451e-05 * SOLAR_MASS)}
 
 from itertools import combinations
-body_pairs=list(combinations(BODIES.keys(),2))
 
-def advance(dt, iterations, bodies=BODIES):
-    for i in range(iterations):
-        for (body1, body2) in body_pairs:
+cdef list pairs = list(combinations(BODIES.keys(),2))
+
+cpdef void advance(double dt, int iterations, dict bodies=BODIES):
+    cdef double x1,y1,z1,x2,y2,z2,m1,m2,dx,dy,dz,mag,m1r,m2r,m
+    
+    for _ in range(iterations):
+        for (body1, body2) in pairs:
             ([x1, y1, z1], v1, m1) = bodies[body1]
             ([x2, y2, z2], v2, m2) = bodies[body2]
 
@@ -75,8 +79,9 @@ def advance(dt, iterations, bodies=BODIES):
             r[1] += dt * vy
             r[2] += dt * vz
 
-def report_energy(e=0.0, bodies=BODIES, pairs=body_pairs):
-    for (body1, body2) in pairs:
+cpdef double report_energy(double e=0.0, dict bodies=BODIES):
+    cdef double x1,y1,z1,x2,y2,z2,m1,m2,dx,dy,dz,m,vx,vy,vz
+    for (body1, body2) in combinations(bodies,2):
         ([x1, y1, z1], v1, m1) = bodies[body1]
         ([x2, y2, z2], v2, m2) = bodies[body2]
 
@@ -91,13 +96,15 @@ def report_energy(e=0.0, bodies=BODIES, pairs=body_pairs):
         
     return e
 
-def nbody(loops, reference, iterations, bodies=BODIES):
+cpdef float nbody(int loops, str reference, int iterations, dict bodies=BODIES):
     '''
         nbody simulation
         loops - number of loops to run
         reference - body at center of system
         iterations - number of timesteps to advance
     '''    
+    cdef double px,py,pz,vx,vy,vz,m_,m
+    cdef list r,v
     # unpack offset_momentum function
     [px, py, pz] = [0.0, 0.0, 0.0]
     for content in bodies.values():
@@ -108,8 +115,7 @@ def nbody(loops, reference, iterations, bodies=BODIES):
     v[0] = px / m
     v[1] = py / m
     v[2] = pz / m
-    
-
+ 
     for _ in range(loops):
         advance(0.01,iterations)
         print(report_energy())
